@@ -11,6 +11,7 @@
  * Tambem serve como superficie de toque para o registro manual, que e o
  * caminho principal do dossie (p. 35) e o fallback obrigatorio da camera.
  */
+import type { KeyboardEvent } from "react";
 import type { Lamina, ZonaLamina } from "@/lib/tipos";
 
 interface Props {
@@ -25,12 +26,12 @@ interface Props {
   className?: string;
 }
 
-const COR_BORDA = "#31343f";
-const COR_ZONA = "#23262f";
-const COR_ZONA_ALT = "#1b1d25";
-const COR_TEXTO = "#c9cbd4";
-const COR_SEL = "#c2a36a";
-const COR_CAND = "#6fa98a";
+const COR_BORDA = "#343740";
+const COR_ZONA = "#21242c";
+const COR_ZONA_ALT = "#191b21";
+const COR_TEXTO = "#d3d4dc";
+const COR_SEL = "#bfa67c";
+const COR_CAND = "#8eb6a2";
 
 function polar(cx: number, cy: number, r: number, graus: number) {
   const rad = (graus * Math.PI) / 180;
@@ -77,9 +78,31 @@ export default function LaminaSvg({
           : COR_ZONA_ALT;
 
   const textoDe = (z: ZonaLamina) =>
-    z.id === selecionada ? "#1a1611" : COR_TEXTO;
+    z.id === selecionada ? "#191611" : COR_TEXTO;
 
   const clicavel = Boolean(onSelecionar);
+
+  /*
+   * O registro manual e o caminho principal, e ate agora so respondia ao
+   * toque: cada zona vira um botao de verdade, com nome, estado e tecla.
+   */
+  const propsZona = (z: ZonaLamina) =>
+    clicavel
+      ? {
+          onClick: () => onSelecionar?.(z),
+          onKeyDown: (e: KeyboardEvent<SVGGElement>) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelecionar?.(z);
+            }
+          },
+          role: "button",
+          tabIndex: 0,
+          "aria-label": z.rotulo,
+          "aria-pressed": z.id === selecionada,
+          style: { cursor: "pointer" },
+        }
+      : undefined;
   const comum = {
     className: className ?? "w-full h-auto",
     xmlns: "http://www.w3.org/2000/svg",
@@ -153,8 +176,7 @@ export default function LaminaSvg({
           return (
             <g
               key={z.id}
-              onClick={clicavel ? () => onSelecionar?.(z) : undefined}
-              style={clicavel ? { cursor: "pointer" } : undefined}
+              {...propsZona(z)}
             >
               <path
                 d={caminhoSetor(cx, cy, rInt, rExt, z.anguloInicio, z.anguloFim)}
@@ -214,8 +236,7 @@ export default function LaminaSvg({
             return (
               <g
                 key={z.id}
-                onClick={clicavel ? () => onSelecionar?.(z) : undefined}
-                style={clicavel ? { cursor: "pointer" } : undefined}
+                {...propsZona(z)}
               >
                 <rect
                   x={60}
@@ -255,8 +276,7 @@ export default function LaminaSvg({
           return (
             <g
               key={z.id}
-              onClick={clicavel ? () => onSelecionar?.(z) : undefined}
-              style={clicavel ? { cursor: "pointer" } : undefined}
+              {...propsZona(z)}
             >
               <rect
                 x={x}
@@ -317,8 +337,7 @@ export default function LaminaSvg({
             return (
               <g
                 key={celula}
-                onClick={clicavel ? () => onSelecionar?.(z) : undefined}
-                style={clicavel ? { cursor: "pointer" } : undefined}
+                {...propsZona(z)}
               >
                 <rect
                   x={10 + ic * w}
@@ -370,8 +389,7 @@ export default function LaminaSvg({
           return (
             <g
               key={z.id}
-              onClick={clicavel ? () => onSelecionar?.(z) : undefined}
-              style={clicavel ? { cursor: "pointer" } : undefined}
+              {...propsZona(z)}
             >
               <polygon
                 points={pontos}

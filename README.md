@@ -23,7 +23,13 @@ autor, horário e número de versão.
    geometria declarada, mais 4 gráficos radiônicos que são de trabalho e nunca
    são lidos. O desenho e o mapa de leitura saem da mesma fonte, então não há
    como divergirem.
-5. **Pendulação** — a câmera abre **em tela cheia** e acompanha o pêndulo,
+5. **A sessão em quatro fases** — *Preparar* (convenção e lâmina), *Ler*
+   (pergunta, pêndulo e registros), *Cruzar* (regras, depois Jev e Gemini) e
+   *Entregar* (revisão do texto e PDF). Uma fase por tela, com rodapé fixo
+   trazendo a próxima ação ao alcance do polegar; a fase fica gravada e
+   reabrir a sessão volta nela. Uma sessão encerrada pode ser reaberta sem
+   perder nada.
+6. **Pendulação** — a câmera abre **em tela cheia** e acompanha o pêndulo,
    medindo eixo de oscilação, sentido de giro e estabilidade. Tudo o que a
    sessão precisa está ali dentro: a pergunta da leitura, o desenho da lâmina
    sobre a imagem (toque para registrar a zona), calibração, dados da captura
@@ -31,7 +37,7 @@ autor, horário e número de versão.
    botão de fechar sempre visível e tecla Esc. Enquanto está aberta, o
    aparelho fica acordado. O registro manual pelo toque é o caminho
    principal; a câmera é apoio.
-6. **Reconhecimento da prancha** — a câmera reconhece sozinha qual lâmina está
+7. **Reconhecimento da prancha** — a câmera reconhece sozinha qual lâmina está
    na mesa e troca a lâmina ativa quando o papel muda, no meio da sessão.
    Como funciona: uma miniatura 32×24 normalizada da cena entra numa média
    móvel lenta, de modo que o pêndulo balançando não a desloque. Quando a
@@ -40,9 +46,9 @@ autor, horário e número de versão.
    mesa. Fora disso nada é enviado. A troca é anunciada, fica no histórico da
    sessão de câmera, e pode ser desligada num botão. Leituras já registradas
    guardam a lâmina com que foram feitas.
-7. **Síntese** — primeiro pelas regras (determinística, sem IA), depois, se
+8. **Síntese** — primeiro pelas regras (determinística, sem IA), depois, se
    autorizado, a camada Jev + Gemini.
-8. **Entrega** — PDF gerado no próprio aparelho, nomeado
+9. **Entrega** — PDF gerado no próprio aparelho, nomeado
    `Nome-Da-Pessoa_AAAA-MM-DD_HHhMM.pdf`.
 
 ## Onde ficam os dados

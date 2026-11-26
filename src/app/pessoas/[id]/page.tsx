@@ -128,7 +128,7 @@ export default function PaginaPessoa() {
       <header className="space-y-1">
         <Link
           href="/"
-          className="text-sm text-[var(--color-texto-2)] hover:text-[var(--color-texto)]"
+          className="btn btn-discreto btn-pequeno -ml-3"
         >
           ‹ Pessoas
         </Link>
@@ -229,7 +229,7 @@ export default function PaginaPessoa() {
 
         <Link
           href={`/pessoas/${pessoa.id}/anamnese/BASE`}
-          className="cartao flex items-center justify-between gap-3 hover:border-[var(--color-acento)]"
+          className="cartao-link flex items-center justify-between gap-3"
         >
           <span>
             <span className="block font-medium">{FICHA_BASE.titulo}</span>
@@ -266,7 +266,7 @@ export default function PaginaPessoa() {
                 <li key={m.id}>
                   <Link
                     href={`/pessoas/${pessoa.id}/anamnese/${m.id}`}
-                    className="flex items-start justify-between gap-3 border-b border-[var(--color-borda)]/60 py-2 hover:text-[var(--color-acento-forte)]"
+                    className="linha-link items-start justify-between border-b border-[var(--color-borda)]/60"
                   >
                     <span>
                       <span className="block text-sm">
@@ -294,7 +294,7 @@ export default function PaginaPessoa() {
             <li>
               <Link
                 href={`/pessoas/${pessoa.id}/anamnese/RETORNO`}
-                className="flex items-center justify-between gap-3 py-2 text-sm hover:text-[var(--color-acento-forte)]"
+                className="linha-link justify-between text-sm"
               >
                 Retorno (R01–R08)
                 <span className="text-[var(--color-texto-2)]">›</span>
@@ -303,7 +303,7 @@ export default function PaginaPessoa() {
             <li>
               <Link
                 href={`/pessoas/${pessoa.id}/anamnese/EXT_ANIMAL_PLANTA`}
-                className="flex items-center justify-between gap-3 py-2 text-sm hover:text-[var(--color-acento-forte)]"
+                className="linha-link justify-between text-sm"
               >
                 Extensão: animal, planta ou terreno
                 <span className="text-[var(--color-texto-2)]">›</span>
@@ -349,7 +349,7 @@ export default function PaginaPessoa() {
               <li key={s.id}>
                 <Link
                   href={`/sessao/${s.id}`}
-                  className="cartao flex items-center justify-between gap-3 hover:border-[var(--color-acento)]"
+                  className="cartao-link flex items-center justify-between gap-3"
                 >
                   <span>
                     <span className="block text-sm font-medium">{s.tema}</span>

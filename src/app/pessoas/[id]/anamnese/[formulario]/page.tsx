@@ -118,7 +118,7 @@ export default function PaginaAnamnese() {
       <header className="space-y-2">
         <Link
           href={`/pessoas/${id}`}
-          className="text-sm text-[var(--color-texto-2)] hover:text-[var(--color-texto)]"
+          className="btn btn-discreto btn-pequeno -ml-3"
         >
           ‹ {pessoa.nomePreferencia}
         </Link>
@@ -150,7 +150,7 @@ export default function PaginaAnamnese() {
       )}
 
       {bandeiras.length > 0 && (
-        <div className="space-y-2 rounded-xl border border-[var(--color-cuidado)]/50 bg-[var(--color-cuidado)]/10 p-4">
+        <div className="aviso aviso-cuidado space-y-2">
           <p className="rotulo">Encaminhamento acionado por regra</p>
           {bandeiras.map((b) => (
             <div key={`${b.tipo}-${b.respostaId}`} className="space-y-1 text-sm">

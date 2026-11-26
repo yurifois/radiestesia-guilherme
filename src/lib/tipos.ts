@@ -330,6 +330,12 @@ export interface Sessao {
   encerradaEm?: string;
   /** Nome que o terapeuta usa para assinar o PDF. */
   terapeuta: string;
+  /**
+   * Fase do fluxo em que a sessao parou (1 a 4). Guardada aqui para que
+   * reabrir a sessao no celular volte ao mesmo ponto, sem rolar atras do
+   * lugar onde se estava.
+   */
+  faseAtual?: number;
 }
 
 export type ModoEntrada = "manual" | "camera";

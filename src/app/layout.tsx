@@ -10,10 +10,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#121318",
+  themeColor: "#111216",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // Sem maximumScale: travar o zoom impede quem precisa aumentar o texto.
 };
 
 export default function RootLayout({
@@ -25,31 +25,30 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className="min-h-dvh">
         <header className="sticky top-0 z-20 border-b border-[var(--color-borda)] bg-[var(--color-fundo)]/95 backdrop-blur">
-          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3">
-            <Link href="/" className="font-semibold tracking-tight">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-2 py-1.5">
+            <Link
+              href="/"
+              className="btn btn-discreto btn-pequeno font-semibold tracking-tight text-[var(--color-texto)]"
+            >
               Radiestesia
             </Link>
-            <nav className="flex gap-1 text-sm">
-              <Link
-                href="/laminas"
-                className="rounded-md px-2.5 py-1.5 text-[var(--color-texto-2)] hover:text-[var(--color-texto)]"
-              >
+            <nav className="flex gap-0.5 text-sm">
+              <Link href="/laminas" className="btn btn-discreto btn-pequeno">
                 Lâminas
               </Link>
-              <Link
-                href="/ajustes"
-                className="rounded-md px-2.5 py-1.5 text-[var(--color-texto-2)] hover:text-[var(--color-texto)]"
-              >
+              <Link href="/ajustes" className="btn btn-discreto btn-pequeno">
                 Ajustes
               </Link>
             </nav>
           </div>
         </header>
-        <main className="mx-auto max-w-2xl px-4 pb-24 pt-5">{children}</main>
+        <main className="mx-auto max-w-2xl px-4 pb-10 pt-5">{children}</main>
         <footer className="mx-auto max-w-2xl px-4 pb-10 text-xs leading-relaxed text-[var(--color-texto-2)]">
           As interpretações aqui são simbólicas e passam por revisão do
-          terapeuta. Não são diagnóstico, prescrição ou previsão. Os dados ficam
-          guardados somente neste aparelho.
+          terapeuta. Não são diagnóstico, prescrição ou previsão. O cadastro
+          fica guardado somente neste aparelho; quando você usa a camada de IA,
+          só a pergunta da leitura e trechos da ficha saem daqui, sem nome nem
+          contato.
         </footer>
       </body>
     </html>

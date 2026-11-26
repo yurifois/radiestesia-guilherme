@@ -88,6 +88,10 @@ export default function CameraPendulo({
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const palcoRef = useRef<HTMLDivElement>(null);
+  // Quem abriu a camera recebe o foco de volta quando ela fecha.
+  const abridorRef = useRef<HTMLButtonElement>(null);
+  const fecharRef = useRef<HTMLButtonElement>(null);
+  const estavaLigada = useRef(false);
   const areaRef = useRef<HTMLDivElement>(null);
   const trackerRef = useRef<TrackerPendulo | null>(null);
   const vigiaRef = useRef<VigiaDeCena | null>(null);
@@ -304,6 +308,47 @@ export default function CameraPendulo({
     v.play().catch(() => {
       setErro("O navegador bloqueou a reprodução do vídeo. Toque na tela.");
     });
+    // A camada e um dialogo: o foco entra nela, no botao de sair.
+    fecharRef.current?.focus();
+  }, [ligada]);
+
+  /*
+   * Enquanto a camada esta aberta ela e a tela inteira, entao o Tab nao pode
+   * sair dela para controles que ninguem ve. Em vez de marcar o resto da
+   * pagina como inerte, o ciclo e fechado aqui mesmo.
+   */
+  function prenderFoco(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "Tab") return;
+    const palco = palcoRef.current;
+    if (!palco) return;
+    const alvos = Array.from(
+      palco.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((el) => !el.hasAttribute("disabled") && el.offsetParent !== null);
+    if (alvos.length === 0) return;
+    const primeiro = alvos[0];
+    const ultimo = alvos[alvos.length - 1];
+    const atual = document.activeElement;
+    if (e.shiftKey && (atual === primeiro || !palco.contains(atual))) {
+      e.preventDefault();
+      ultimo.focus();
+    } else if (!e.shiftKey && atual === ultimo) {
+      e.preventDefault();
+      primeiro.focus();
+    }
+  }
+
+  // Ao fechar, o foco volta ao botao que abriu, e nao ao topo da pagina.
+  useEffect(() => {
+    if (ligada) {
+      estavaLigada.current = true;
+      return;
+    }
+    if (estavaLigada.current) {
+      estavaLigada.current = false;
+      abridorRef.current?.focus();
+    }
   }, [ligada]);
 
   // Tela cheia de verdade, aparelho acordado, página travada por baixo.
@@ -521,7 +566,7 @@ export default function CameraPendulo({
         height: `${calibracao.altura * 100}%`,
         transform: `rotate(${-calibracao.rotacaoGraus}deg)`,
         opacity: 0.58,
-        outline: calibrando ? "2px dashed #c2a36a" : "1px solid #ffffff22",
+        outline: calibrando ? "2px dashed #bfa67c" : "1px solid #ffffff22",
       }}
     >
       <LaminaSvg
@@ -542,6 +587,10 @@ export default function CameraPendulo({
     return (
       <div
         ref={palcoRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Câmera do pêndulo sobre ${lamina.nome}`}
+        onKeyDown={prenderFoco}
         className="fixed inset-0 z-50 flex flex-col bg-black text-[var(--color-texto)]"
       >
         {/* ---- Barra de cima ---- */}
@@ -559,6 +608,7 @@ export default function CameraPendulo({
             </p>
           </div>
           <button
+            ref={fecharRef}
             className="btn btn-pequeno shrink-0"
             onClick={desligar}
             aria-label="Fechar câmera"
@@ -633,14 +683,18 @@ export default function CameraPendulo({
             </button>
           )}
 
-          {recado && (
-            <p className="rounded-lg border border-[var(--color-ok)]/40 bg-[var(--color-ok)]/10 p-2 text-xs">
-              {recado}
-            </p>
-          )}
+          {/* Troca de prancha e confirmacao sao anunciadas, nao so pintadas. */}
+          <div aria-live="polite">
+            {recado && (
+              <p className="rounded-lg border border-[var(--color-ok)]/40 bg-[var(--color-ok)]/10 p-2 text-xs">
+                {recado}
+              </p>
+            )}
+          </div>
 
           <input
             className="campo text-sm"
+            aria-label="Pergunta desta leitura"
             placeholder="Pergunta desta leitura, com tema e período"
             value={pergunta}
             onChange={(e) => onPergunta(e.target.value)}
@@ -775,10 +829,11 @@ export default function CameraPendulo({
       <div className="cartao space-y-3">
         <p className="text-sm leading-relaxed text-[var(--color-texto-2)]">
           {podeUsarCamera
-            ? "A câmera abre em tela cheia, reconhece sozinha qual prancha está na mesa e acompanha o pêndulo. Você fecha quando quiser, no botão ou no Esc."
+            ? "A câmera abre em tela cheia, reconhece sozinha qual prancha está na mesa e acompanha o pêndulo. Você fecha quando quiser, no botão ou no Esc. Sem câmera, o registro manual logo abaixo faz o mesmo trabalho."
             : "A autorização de captura por câmera não foi registrada para esta pessoa. Use o registro manual abaixo."}
         </p>
         <button
+          ref={abridorRef}
           className="btn btn-principal w-full"
           onClick={ligar}
           disabled={!podeUsarCamera}

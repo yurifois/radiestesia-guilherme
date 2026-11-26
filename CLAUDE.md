@@ -42,7 +42,16 @@ Tudo em português, inclusive nomes de tipos, funções e arquivos.
    O dossiê registra obras de terceiros sob CC BY-NC; o catálogo só guarda
    nomes como título, nunca a arte.
 
-9. **Chaves só em `.env.local`.** Nunca em `.env.example`, nunca em commit,
+9. **Design: tokens, camadas e duas bordas.** Cor, sombra e brilho saem dos
+   tokens de `src/app/globals.css` — nada de hex solto no JSX. As classes do
+   app moram em `@layer base` e `@layer components`; fora de camada uma
+   classe minha vence o utilitário do Tailwind escrito ao lado dela. A borda
+   decorativa (`--color-borda`) separa cartões; a borda de controle
+   (`--color-borda-controle`) diz onde se toca, passa de 3:1 e nunca é a
+   única pista de interação. Hover só dentro de `@media (hover: hover)`,
+   `:active` imediato, foco visível em tudo.
+
+10. **Chaves só em `.env.local`.** Nunca em `.env.example`, nunca em commit,
    nunca no cliente. `src/lib/ia-servidor.ts` tem `import "server-only"`.
 
 ## Mapa do código

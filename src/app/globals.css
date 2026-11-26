@@ -4,108 +4,312 @@
  * Tema escuro e neutro por decisao de uso: o celular fica apontado para a
  * mesa durante a sessao, e uma tela clara ofusca a lamina e reflete no peso
  * do pendulo. Botoes grandes porque o terapeuta usa uma mao so.
+ *
+ * Duas bordas, nao uma. A borda decorativa separa cartoes; a borda de
+ * controle diz onde se toca e onde se digita, e passa de 3:1 de contraste
+ * mesmo contra a superficie de hover. Nunca use a decorativa como unica
+ * pista de interacao.
  */
 @theme {
-  --color-fundo: #121318;
-  --color-superficie: #1b1d25;
-  --color-superficie-2: #23262f;
-  --color-borda: #31343f;
-  --color-texto: #e8e9ee;
-  --color-texto-2: #a0a3b1;
-  --color-acento: #c2a36a;
-  --color-acento-forte: #d8bd87;
-  --color-alerta: #e4705f;
-  --color-cuidado: #e0b34a;
-  --color-ok: #6fa98a;
+  --color-fundo: #111216;
+  --color-superficie: #191b21;
+  --color-superficie-2: #21242c;
+  --color-superficie-hover: #292c35;
+  --color-superficie-active: #17191f;
+  --color-borda: #343740;
+  --color-borda-controle: #777c8a;
+  --color-texto: #e5e4e8;
+  --color-texto-2: #a8aab4;
+  --color-acento: #bfa67c;
+  --color-acento-forte: #cbb48d;
+  --color-acento-active: #ae956e;
+  --color-sobre-acento: #191611;
+  --color-foco: #d6bb90;
+  --color-alerta: #d68f86;
+  --color-cuidado: #cdb17a;
+  --color-ok: #8eb6a2;
+
+  /*
+   * Tres niveis de elevacao. No escuro, a diferenca entre superficies faz a
+   * maior parte do trabalho; a sombra complementa e nunca e a unica pista de
+   * que algo esta acima. Nivel 0 e ausencia de sombra: repouso.
+   */
+  --shadow-elev-1: 0 1px 2px rgb(0 0 0 / 0.34), 0 5px 14px rgb(0 0 0 / 0.22),
+    inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --shadow-elev-2: 0 -8px 24px rgb(0 0 0 / 0.38),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+  /* Brilho so no hover da acao primaria. Sem pulsacao, sem glow em repouso. */
+  --shadow-acento: 0 1px 2px rgb(0 0 0 / 0.34), 0 5px 14px rgb(0 0 0 / 0.22),
+    0 0 10px rgb(191 166 124 / 0.1), inset 0 1px 0 rgb(255 255 255 / 0.05);
 }
 
-html,
-body {
-  background: var(--color-fundo);
-  color: var(--color-texto);
-  -webkit-text-size-adjust: 100%;
+:root {
+  --transicao: 120ms ease-out;
 }
 
-body {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  overscroll-behavior-y: none;
+/*
+ * As classes abaixo ficam nas camadas do Tailwind. Fora delas, uma classe
+ * minha venceria qualquer utilitario escrito ao lado dela no JSX: era por
+ * isso que um cartao com "flex" continuava em display block.
+ */
+@layer base {
+  html,
+  body {
+    background: var(--color-fundo);
+    color: var(--color-texto);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    overscroll-behavior-y: none;
+  }
+
+  /*
+   * O realce nativo de toque sai apenas do que ja tem estado proprio. Tirar de
+   * tudo, como antes, apagava o unico retorno visual de elementos ainda sem
+   * estilo.
+   */
+  .btn,
+  .cartao-link,
+  .aba {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+
+  /* Foco sempre visivel, inclusive no que nao tem classe propria. */
+  :focus-visible {
+    outline: 2px solid var(--color-foco);
+    outline-offset: 3px;
+  }
 }
 
-* {
-  -webkit-tap-highlight-color: transparent;
+@layer components {
+  /* Campos de formulario: alvo de toque confortavel. */
+  .campo {
+    width: 100%;
+    min-height: 3rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--color-borda-controle);
+    background: var(--color-superficie-2);
+    color: var(--color-texto);
+    padding: 0.65rem 0.75rem;
+    transition: background-color var(--transicao), border-color var(--transicao);
+  }
+  .campo::placeholder {
+    color: var(--color-texto-2);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .campo:hover:not(:disabled) {
+      background: var(--color-superficie-hover);
+    }
+  }
+  .campo:focus {
+    border-color: var(--color-foco);
+    outline: none;
+  }
+  .campo:focus-visible {
+    outline: 2px solid var(--color-foco);
+    outline-offset: 2px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0 1.1rem;
+    border-radius: 0.7rem;
+    border: 1px solid var(--color-borda-controle);
+    background: var(--color-superficie-2);
+    color: var(--color-texto);
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color var(--transicao), border-color var(--transicao),
+      box-shadow var(--transicao);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn:hover:not(:disabled) {
+      background: var(--color-superficie-hover);
+    }
+  }
+  /* A resposta de pressao e imediata: sem espera, sem escala, sem deslocamento. */
+  .btn:active:not(:disabled) {
+    background: var(--color-superficie-active);
+    box-shadow: none;
+    transition-duration: 0ms;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .btn-principal {
+    background: var(--color-acento);
+    border-color: var(--color-acento);
+    color: var(--color-sobre-acento);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-principal:hover:not(:disabled) {
+      background: var(--color-acento-forte);
+      border-color: var(--color-acento-forte);
+      box-shadow: var(--shadow-acento);
+    }
+  }
+  .btn-principal:active:not(:disabled) {
+    background: var(--color-acento-active);
+    border-color: var(--color-acento-active);
+    box-shadow: none;
+  }
+
+  /* Secundario de verdade: sem peso de fundo, ainda com alvo de 48px. */
+  .btn-discreto {
+    background: transparent;
+    border-color: transparent;
+    color: var(--color-texto-2);
+    font-weight: 500;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-discreto:hover:not(:disabled) {
+      background: var(--color-superficie-hover);
+      color: var(--color-texto);
+    }
+  }
+
+  /* Menor, mas nunca abaixo de 44px de alvo tocavel. */
+  .btn-pequeno {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    padding: 0 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  /* Cartao estatico: sem hover, sem sombra. Ele nao e clicavel. */
+  .cartao {
+    border: 1px solid var(--color-borda);
+    background: var(--color-superficie);
+    border-radius: 0.9rem;
+    padding: 1rem;
+  }
+
+  /* Cartao que leva a algum lugar: borda de controle e estados. */
+  .cartao-link {
+    display: block;
+    border: 1px solid var(--color-borda-controle);
+    background: var(--color-superficie);
+    border-radius: 0.9rem;
+    padding: 1rem;
+    transition: background-color var(--transicao), box-shadow var(--transicao);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .cartao-link:hover {
+      background: var(--color-superficie-hover);
+      box-shadow: var(--shadow-elev-1);
+    }
+  }
+  .cartao-link:active {
+    background: var(--color-superficie-active);
+    box-shadow: none;
+    transition-duration: 0ms;
+  }
+
+  /*
+   * Linha de lista que leva a algum lugar. Nao e botao, mas tem alvo de 44px e
+   * fundo no hover: antes mudava so a cor do texto, pista fraca e invisivel
+   * para quem nao distingue a cor.
+   */
+  .linha-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    margin-inline: -0.6rem;
+    transition: background-color var(--transicao);
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .linha-link:hover {
+      background: var(--color-superficie-hover);
+    }
+  }
+  .linha-link:active {
+    background: var(--color-superficie-active);
+    transition-duration: 0ms;
+  }
+
+  .rotulo {
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-texto-2);
+    font-weight: 600;
+  }
+
+  /*
+   * Avisos: a cor acompanha o texto, nunca o substitui. Quem nao distingue a
+   * cor le o mesmo recado.
+   */
+  .aviso {
+    border-radius: 0.6rem;
+    border: 1px solid var(--color-borda);
+    background: var(--color-superficie-2);
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  .aviso-cuidado {
+    border-color: color-mix(in srgb, var(--color-cuidado) 45%, transparent);
+    background: color-mix(in srgb, var(--color-cuidado) 10%, transparent);
+  }
+  .aviso-alerta {
+    border-color: color-mix(in srgb, var(--color-alerta) 50%, transparent);
+    background: color-mix(in srgb, var(--color-alerta) 10%, transparent);
+  }
+  .aviso-ok {
+    border-color: color-mix(in srgb, var(--color-ok) 45%, transparent);
+    background: color-mix(in srgb, var(--color-ok) 10%, transparent);
+  }
+
+  /*
+   * Rodape persistente da sessao: a proxima acao fica ao alcance do polegar,
+   * sem rolar. A sombra aponta para o conteudo, nao para fora da tela.
+   */
+  .rodape-fixo {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    border-top: 1px solid var(--color-borda);
+    background: var(--color-superficie);
+    box-shadow: var(--shadow-elev-2);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* Espaco reservado no conteudo: o rodape nao encobre o ultimo campo. */
+  .com-rodape {
+    padding-bottom: 6.5rem;
+  }
 }
 
-input,
-textarea,
-select,
-button {
-  font: inherit;
-}
-
-/* Campos de formulario: alvo de toque confortavel. */
-.campo {
-  width: 100%;
-  min-height: 2.9rem;
-  border-radius: 0.6rem;
-  border: 1px solid var(--color-borda);
-  background: var(--color-superficie-2);
-  color: var(--color-texto);
-  padding: 0.6rem 0.75rem;
-}
-.campo:focus-visible {
-  outline: 2px solid var(--color-acento);
-  outline-offset: 1px;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 3rem;
-  padding: 0 1.1rem;
-  border-radius: 0.7rem;
-  border: 1px solid var(--color-borda);
-  background: var(--color-superficie-2);
-  color: var(--color-texto);
-  font-weight: 600;
-  cursor: pointer;
-  text-align: center;
-}
-.btn:hover:not(:disabled) {
-  border-color: var(--color-acento);
-}
-.btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.btn-principal {
-  background: var(--color-acento);
-  border-color: var(--color-acento);
-  color: #1a1611;
-}
-.btn-principal:hover:not(:disabled) {
-  background: var(--color-acento-forte);
-}
-.btn-pequeno {
-  min-height: 2.3rem;
-  padding: 0 0.7rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.cartao {
-  border: 1px solid var(--color-borda);
-  background: var(--color-superficie);
-  border-radius: 0.9rem;
-  padding: 1rem;
-}
-
-.rotulo {
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-texto-2);
-  font-weight: 600;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
