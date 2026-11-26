@@ -88,10 +88,10 @@ export type PedidoOrquestracao = z.infer<typeof zPedidoOrquestracao>;
 // ---------------------------------------------------------------------------
 export const zDecisaoJev = z.object({
   status: z.enum([
-    "rascunho",
+    "leitura_montada",
     "dados_insuficientes",
     "inconclusivo",
-    "precisa_revisao",
+    "com_pendencias",
   ]),
   /** Hipotese simbolica. Precisa citar IDs nos vinculos abaixo. */
   interpretacaoSimbolica: z.string().max(2500),

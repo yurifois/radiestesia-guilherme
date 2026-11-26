@@ -23,6 +23,7 @@ import {
   descreverEvento,
   extrairTrechos,
   rankearLaminas,
+  rotuloStatus,
   sintetizar,
   TEXTO_BANDEIRA,
   validarIntegridade,
@@ -1024,7 +1025,7 @@ function PainelSintese({
       <div className="cartao space-y-2">
         <p className="rotulo">Status</p>
         <p className="text-sm">
-          {sintese.status.replace(/_/g, " ")} ·{" "}
+          {rotuloStatus(sintese.status)} ·{" "}
           {sintese.procedencia.motor === "deterministico"
             ? "regras do aplicativo"
             : `regras + ${sintese.procedencia.jevModelo ?? "Jev"}${

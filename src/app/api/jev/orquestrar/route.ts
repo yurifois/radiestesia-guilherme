@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     }
 
     // Sem vinculo valido, nao existe associacao a apresentar.
-    if (decisao.vinculosDeApoio.length === 0 && decisao.status === "rascunho") {
+    if (decisao.vinculosDeApoio.length === 0 && decisao.status === "leitura_montada") {
       decisao.status = "inconclusivo";
       decisao.contradicoesELacunas.push(
         "Nenhum vínculo citado pelo modelo pôde ser verificado contra os IDs enviados. A associação foi descartada.",

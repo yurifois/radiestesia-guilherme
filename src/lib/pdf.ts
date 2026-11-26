@@ -10,7 +10,7 @@ import { rotuloDoTema } from "@/data/formularios";
 import { jsPDF } from "jspdf";
 import type { Redacao } from "./schemas";
 import type { Pessoa, Sessao, Sintese } from "./tipos";
-import { TEXTO_BANDEIRA } from "./motor";
+import { rotuloStatus, TEXTO_BANDEIRA } from "./motor";
 
 const MARGEM = 18;
 const LARGURA_PAGINA = 210;
@@ -370,7 +370,7 @@ export function gerarPdf(dados: DadosPdf): { blob: Blob; nome: string } {
       "Leituras consideradas",
       String(sintese.procedencia.leituras ?? "—"),
     ],
-    ["Status", sintese.status.replace(/_/g, " ")],
+    ["Status", rotuloStatus(sintese.status)],
   ]);
 
   if (sintese.bandeiras.length > 0) {

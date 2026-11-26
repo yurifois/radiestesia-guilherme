@@ -5,7 +5,7 @@
  * Tres niveis que nunca se fundem (dossie, p. 2):
  *   1. Observacao  -> EventoLeitura  (pergunta, lamina, movimento/zona)
  *   2. Contexto    -> AnamneseRespondida (o que a pessoa informou)
- *   3. Interpretacao -> Sintese (hipotese simbolica, sempre rascunho)
+ *   3. Interpretacao -> Sintese (hipotese simbolica, montada pelo app)
  */
 
 import type { Redacao } from "./schemas";
@@ -408,11 +408,17 @@ export interface EventoLeitura {
 // ---------------------------------------------------------------------------
 // Sintese. Estrutura de "IA: papel, saida e instrucoes" (dossie, p. 38)
 // ---------------------------------------------------------------------------
+/**
+ * Em que pe ficou a leitura. Os dois primeiros nomes eram "rascunho" e
+ * "precisa_revisao", de quando o texto esperava a assinatura do terapeuta.
+ * Nao espera mais: o documento que sai ja e o final, e o status diz o que o
+ * app conseguiu montar, nao o que falta alguem fazer.
+ */
 export type StatusSintese =
-  | "rascunho"
+  | "leitura_montada"
   | "dados_insuficientes"
   | "inconclusivo"
-  | "precisa_revisao";
+  | "com_pendencias";
 
 export interface VinculoApoio {
   /** Tema do simbolo lido. */

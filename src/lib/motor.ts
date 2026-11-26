@@ -30,7 +30,24 @@ import type {
   VinculoApoio,
 } from "./tipos";
 
-export const VERSAO_REGRAS = "regras-1.1.0";
+/**
+ * Rotulo do status para tela e PDF. Aceita string solta de proposito: uma
+ * sintese gravada antes desta versao ainda carrega "rascunho" ou
+ * "precisa_revisao", e nao vale reescrever o que ja foi entregue.
+ */
+export function rotuloStatus(status: string): string {
+  const mapa: Record<string, string> = {
+    leitura_montada: "leitura montada",
+    dados_insuficientes: "dados insuficientes",
+    inconclusivo: "inconclusivo",
+    com_pendencias: "com pendências no registro",
+    rascunho: "leitura montada",
+    precisa_revisao: "com pendências no registro",
+  };
+  return mapa[status] ?? status.replace(/_/g, " ");
+}
+
+export const VERSAO_REGRAS = "regras-1.2.0";
 
 // ===========================================================================
 // Camada 1: integridade
@@ -471,10 +488,10 @@ export function sintetizar(entrada: EntradaSintese): Sintese {
   );
   const cruzamento = cruzar(eventos, trechos);
 
-  let status: Sintese["status"] = "rascunho";
+  let status: Sintese["status"] = "leitura_montada";
   if (trechos.length === 0) status = "dados_insuficientes";
   else if (confirmados.length === 0) status = "inconclusivo";
-  else if (pendencias.length > 0) status = "precisa_revisao";
+  else if (pendencias.length > 0) status = "com_pendencias";
   else if (cruzamento.vinculos.length === 0) status = "inconclusivo";
 
   const lacunas: string[] = [];
