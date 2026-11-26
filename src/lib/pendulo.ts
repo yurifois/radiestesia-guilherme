@@ -722,3 +722,151 @@ export const TEXTO_MOVIMENTO: Record<MovimentoPendulo, string> = {
   imovel: "Praticamente imóvel",
   indefinido: "Indefinido",
 };
+
+// ===========================================================================
+// Vigia de cena: percebe que a prancha sobre a mesa mudou.
+//
+// A ideia e simples e barata: uma miniatura 32x24 em escala de cinza,
+// normalizada (media zero, desvio um) para que mudanca de luz nao conte como
+// mudanca de prancha. A miniatura entra numa media movel lenta, para que o
+// pendulo balancando - que ocupa um ou dois pontos da grade - nao desloque a
+// assinatura. Quando a assinatura suavizada se afasta da assinatura da ultima
+// identificacao, e a imagem volta a ficar parada (a mao saiu da frente), e
+// hora de olhar de novo quem esta na mesa.
+//
+// Nenhum quadro sai do aparelho por causa disto. O vigia so decide QUANDO
+// vale a pena tirar uma foto; quem envia a foto e o componente da camera, e
+// so com a autorizacao de envio a fornecedor de IA registrada.
+// ===========================================================================
+
+export const CENA = {
+  largura: 32,
+  altura: 24,
+  /** Intervalo entre amostras da miniatura. Nao precisa de 60 por segundo. */
+  msEntreAmostras: 120,
+  /** Peso do quadro novo na media movel. Baixo para o pendulo nao pesar. */
+  suavizacao: 0.14,
+  /** Distancia a partir da qual a cena conta como outra prancha. */
+  limiarTroca: 0.3,
+  /** Abaixo disto a cena esta parada: ninguem mexendo na mesa. */
+  limiarParada: 0.06,
+  /** Quanto tempo parada antes de valer uma foto. */
+  msParaEstabilizar: 1200,
+  /** Tempo minimo entre duas identificacoes. */
+  msEntreIdentificacoes: 8000,
+};
+
+export interface EstadoCena {
+  /** Distancia da cena atual para a cena da ultima identificacao. */
+  distancia: number;
+  /** A imagem parou de mudar. */
+  parada: boolean;
+  /** Ha quanto tempo esta parada, em ms. */
+  paradaHaMs: number;
+  /** Afastou-se o bastante da ultima identificacao. */
+  mudou: boolean;
+  /** Ainda nao houve nenhuma identificacao nesta sessao de camera. */
+  semReferencia: boolean;
+}
+
+function assinaturaNormalizada(cinza: Float32Array): Float32Array {
+  let soma = 0;
+  for (const v of cinza) soma += v;
+  const media = soma / cinza.length;
+  let variancia = 0;
+  for (const v of cinza) variancia += (v - media) * (v - media);
+  const desvio = Math.sqrt(variancia / cinza.length) || 1;
+  const saida = new Float32Array(cinza.length);
+  for (let i = 0; i < cinza.length; i++) saida[i] = (cinza[i] - media) / desvio;
+  return saida;
+}
+
+function distanciaMedia(a: Float32Array, b: Float32Array): number {
+  let soma = 0;
+  for (let i = 0; i < a.length; i++) soma += Math.abs(a[i] - b[i]);
+  return soma / a.length;
+}
+
+export class VigiaDeCena {
+  private canvas: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
+  private suave: Float32Array | null = null;
+  private anterior: Float32Array | null = null;
+  private referencia: Float32Array | null = null;
+  private paradaDesde: number | null = null;
+  private ultimaAmostra = 0;
+
+  constructor() {
+    this.canvas = document.createElement("canvas");
+    this.canvas.width = CENA.largura;
+    this.canvas.height = CENA.altura;
+    const ctx = this.canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) throw new Error("Canvas 2D indisponível neste navegador.");
+    this.ctx = ctx;
+  }
+
+  limpar(): void {
+    this.suave = null;
+    this.anterior = null;
+    this.referencia = null;
+    this.paradaDesde = null;
+    this.ultimaAmostra = 0;
+  }
+
+  /** Marca a cena atual como a cena ja identificada. */
+  marcarIdentificada(): void {
+    if (this.suave) this.referencia = this.suave.slice();
+  }
+
+  /**
+   * Devolve o estado da cena, ou null quando ainda nao ha o que dizer
+   * (quadro cedo demais depois da ultima amostra, video sem imagem).
+   */
+  processar(video: HTMLVideoElement, agoraMs: number): EstadoCena | null {
+    if (video.readyState < 2 || video.videoWidth === 0) return null;
+    if (agoraMs - this.ultimaAmostra < CENA.msEntreAmostras) return null;
+    this.ultimaAmostra = agoraMs;
+
+    this.ctx.drawImage(video, 0, 0, CENA.largura, CENA.altura);
+    const dados = this.ctx.getImageData(0, 0, CENA.largura, CENA.altura).data;
+    const cinza = new Float32Array(CENA.largura * CENA.altura);
+    for (let i = 0, p = 0; i < cinza.length; i++, p += 4) {
+      cinza[i] =
+        (dados[p] * 299 + dados[p + 1] * 587 + dados[p + 2] * 114) / 1000;
+    }
+    const nova = assinaturaNormalizada(cinza);
+
+    if (!this.suave) {
+      this.suave = nova.slice();
+    } else {
+      const k = CENA.suavizacao;
+      for (let i = 0; i < nova.length; i++) {
+        this.suave[i] = this.suave[i] * (1 - k) + nova[i] * k;
+      }
+    }
+
+    const movimentoDaCena = this.anterior
+      ? distanciaMedia(this.suave, this.anterior)
+      : Number.POSITIVE_INFINITY;
+    this.anterior = this.suave.slice();
+
+    const parada = movimentoDaCena < CENA.limiarParada;
+    if (parada) {
+      if (this.paradaDesde === null) this.paradaDesde = agoraMs;
+    } else {
+      this.paradaDesde = null;
+    }
+
+    const distancia = this.referencia
+      ? distanciaMedia(this.suave, this.referencia)
+      : 0;
+
+    return {
+      distancia,
+      parada,
+      paradaHaMs: this.paradaDesde === null ? 0 : agoraMs - this.paradaDesde,
+      mudou: Boolean(this.referencia) && distancia > CENA.limiarTroca,
+      semReferencia: this.referencia === null,
+    };
+  }
+}

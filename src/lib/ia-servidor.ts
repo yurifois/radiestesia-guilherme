@@ -68,7 +68,12 @@ export async function chamarJev(prompt: string): Promise<{
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       temperature: 0.2,
-      max_tokens: 4000,
+      // O roteador escolhe modelos que raciocinam antes de responder, e o
+      // raciocinio consome o mesmo orcamento de tokens. Com orcamento curto a
+      // resposta vem vazia, com finish_reason "length". Esforco baixo e
+      // orcamento folgado: a tarefa aqui e decidir em JSON, nao redigir.
+      reasoning: { effort: "low" },
+      max_tokens: 12000,
     }),
     signal: AbortSignal.timeout(120_000),
   });
@@ -83,11 +88,24 @@ export async function chamarJev(prompt: string): Promise<{
   }
 
   const dados = (await resposta.json()) as {
-    choices?: { message?: { content?: string } }[];
+    choices?: {
+      message?: { content?: string };
+      finish_reason?: string;
+      native_finish_reason?: string;
+    }[];
     model?: string;
   };
-  const texto = dados.choices?.[0]?.message?.content ?? "";
-  if (!texto) throw new ErroIA("OpenRouter devolveu resposta vazia.", 502);
+  const escolha = dados.choices?.[0];
+  const texto = escolha?.message?.content ?? "";
+  if (!texto) {
+    const motivo =
+      escolha?.finish_reason ?? escolha?.native_finish_reason ?? "sem motivo";
+    throw new ErroIA(
+      `OpenRouter devolveu resposta vazia (${motivo}).`,
+      502,
+      `modelo roteado: ${dados.model ?? modelo}`,
+    );
+  }
   return { texto, modelo: dados.model ?? modelo };
 }
 

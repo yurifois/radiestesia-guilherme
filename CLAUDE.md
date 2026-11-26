@@ -27,15 +27,22 @@ Tudo em português, inclusive nomes de tipos, funções e arquivos.
    `MotivoAbstencao[]`. Enquanto houver um motivo, a leitura não pode ser
    confirmada. Não afrouxe os limiares de `LIMIARES` sem motivo medido.
 
-6. **Desenho e leitura vêm da mesma fonte.** `LaminaSvg` renderiza a partir das
+6. **O vigia de cena não envia nada.** `VigiaDeCena`, em
+   `src/lib/pendulo.ts`, só decide QUANDO vale a pena olhar. Quem envia a foto
+   é `CameraPendulo`, uma de cada vez, com intervalo mínimo de
+   `CENA.msEntreIdentificacoes`, e só com a autorização de envio a fornecedor
+   de IA. Depois de cada identificação, `marcarIdentificada()` fixa a cena
+   atual como referência — sem isso a mesma foto sairia a cada ciclo.
+
+7. **Desenho e leitura vêm da mesma fonte.** `LaminaSvg` renderiza a partir das
    zonas declaradas em `src/data/laminas.ts`, as mesmas que o mapeamento usa.
    Não acrescente arte solta: acrescente geometria.
 
-7. **Nada de lâmina copiada.** Todo desenho é original, gerado da geometria.
+8. **Nada de lâmina copiada.** Todo desenho é original, gerado da geometria.
    O dossiê registra obras de terceiros sob CC BY-NC; o catálogo só guarda
    nomes como título, nunca a arte.
 
-8. **Chaves só em `.env.local`.** Nunca em `.env.example`, nunca em commit,
+9. **Chaves só em `.env.local`.** Nunca em `.env.example`, nunca em commit,
    nunca no cliente. `src/lib/ia-servidor.ts` tem `import "server-only"`.
 
 ## Mapa do código

@@ -26,9 +26,18 @@ autor, horário e número de versão.
 5. **Pendulação** — a câmera traseira acompanha o pêndulo e mede eixo de
    oscilação, sentido de giro e estabilidade. O registro manual pelo toque na
    lâmina é o caminho principal; a câmera é apoio.
-6. **Síntese** — primeiro pelas regras (determinística, sem IA), depois, se
+6. **Reconhecimento da prancha** — a câmera reconhece sozinha qual lâmina está
+   na mesa e troca a lâmina ativa quando o papel muda, no meio da sessão.
+   Como funciona: uma miniatura 32×24 normalizada da cena entra numa média
+   móvel lenta, de modo que o pêndulo balançando não a desloque. Quando a
+   assinatura se afasta da assinatura da última identificação **e** a imagem
+   volta a ficar parada, uma foto é enviada para o Gemini decidir quem está na
+   mesa. Fora disso nada é enviado. A troca é anunciada, fica no histórico da
+   sessão de câmera, e pode ser desligada num botão. Leituras já registradas
+   guardam a lâmina com que foram feitas.
+7. **Síntese** — primeiro pelas regras (determinística, sem IA), depois, se
    autorizado, a camada Jev + Gemini.
-7. **Entrega** — PDF gerado no próprio aparelho, nomeado
+8. **Entrega** — PDF gerado no próprio aparelho, nomeado
    `Nome-Da-Pessoa_AAAA-MM-DD_HHhMM.pdf`.
 
 ## Onde ficam os dados
@@ -59,7 +68,7 @@ sessão.
 |---|---|---|
 | Orquestração | `typesafe/jev-router` (OpenRouter) | decide, em JSON tipado, o que se sustenta: status, hipótese, vínculos, lacunas, perguntas de confirmação |
 | Redação | `gemini-2.5-flash` | escreve o texto humano do PDF, na voz do Guilherme |
-| Visão | `gemini-2.5-flash` | identifica a lâmina a partir de uma foto, uma vez |
+| Visão | `gemini-2.5-flash` | identifica a lâmina a partir de uma foto, sozinho sempre que a prancha muda |
 
 Controles que ficam **fora do prompt**, no servidor:
 

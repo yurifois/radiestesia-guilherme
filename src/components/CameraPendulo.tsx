@@ -4,26 +4,31 @@
  * Camera aberta sobre a lamina, com overlay calibravel e tracker local.
  *
  * O processamento todo acontece aqui, no aparelho. Nenhum quadro de video sai
- * do celular. A unica coisa que pode ser enviada e UMA foto, sob demanda, para
- * identificar qual prancha esta na mesa, e so se houver consentimento.
+ * do celular de forma continua. O que pode sair, e so com a autorizacao de
+ * envio a fornecedor de IA registrada, e UMA foto por vez, quando o vigia de
+ * cena percebe que a prancha sobre a mesa mudou.
  *
  * A camera e um auxilio, nao a autoridade: toda leitura passa por confirmacao
  * do terapeuta, e a selecao manual sobre o desenho esta sempre disponivel
- * (dossie, p. 35: "Solicitar revisao e confirmacao do terapeuta").
+ * (dossie, p. 35: "Solicitar revisao e confirmacao do terapeuta"). O mesmo
+ * vale para a lamina: a troca automatica e anunciada e pode ser desfeita.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import LaminaSvg from "./LaminaSvg";
 import {
   CALIBRACAO_PADRAO,
+  CENA,
   type Calibracao,
+  type EstadoCena,
   type Leitura,
   mapearParaZona,
   TEXTO_ABSTENCAO,
   TEXTO_MOVIMENTO,
   TrackerPendulo,
+  VigiaDeCena,
 } from "@/lib/pendulo";
 import type { Lamina, MetricasCaptura, ZonaLamina } from "@/lib/tipos";
-import { CATALOGO, DESCRICAO_VISUAL } from "@/data/laminas";
+import { acharLamina, CATALOGO, DESCRICAO_VISUAL } from "@/data/laminas";
 
 interface Props {
   lamina: Lamina;
@@ -41,6 +46,14 @@ interface Props {
 }
 
 const CHAVE_CALIBRACAO = "radiestesia:calibracao";
+const CHAVE_AUTO = "radiestesia:identificar-sozinho";
+
+/** Uma linha do histórico de identificações desta sessão de câmera. */
+interface MarcoLamina {
+  em: number;
+  texto: string;
+  automatico: boolean;
+}
 
 export default function CameraPendulo({
   lamina,
@@ -53,6 +66,7 @@ export default function CameraPendulo({
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackerRef = useRef<TrackerPendulo | null>(null);
+  const vigiaRef = useRef<VigiaDeCena | null>(null);
   const loopRef = useRef<number | null>(null);
   const fluxoRef = useRef<MediaStream | null>(null);
 
@@ -65,12 +79,36 @@ export default function CameraPendulo({
   const [identificando, setIdentificando] = useState(false);
   const [avisoVisao, setAvisoVisao] = useState<string | null>(null);
   const [zonaManual, setZonaManual] = useState<ZonaLamina | null>(null);
+  const [autoIdentificar, setAutoIdentificar] = useState(true);
+  const [cena, setCena] = useState<EstadoCena | null>(null);
+  const [marcos, setMarcos] = useState<MarcoLamina[]>([]);
+
+  // O laço de animação lê props e estado por referência: assim uma troca de
+  // lâmina no meio da sessão vale já no próximo quadro, sem reabrir a câmera.
+  const laminaRef = useRef(lamina);
+  const calibracaoRef = useRef(calibracao);
+  const convencaoRef = useRef(temConvencao);
+  const sentidoRef = useRef(sentidoDeLeitura);
+  const podeIaRef = useRef(podeEnviarAIa);
+  const autoRef = useRef(autoIdentificar);
+  const identificandoRef = useRef(false);
+  const ultimaIdentRef = useRef(0);
+  const identificarRef = useRef<(auto: boolean) => void>(() => {});
+
+  laminaRef.current = lamina;
+  calibracaoRef.current = calibracao;
+  convencaoRef.current = temConvencao;
+  sentidoRef.current = sentidoDeLeitura;
+  podeIaRef.current = podeEnviarAIa;
+  autoRef.current = autoIdentificar;
 
   // Calibracao e preferencia do terapeuta, nao dado de pessoa atendida.
   useEffect(() => {
     try {
       const salvo = localStorage.getItem(CHAVE_CALIBRACAO);
       if (salvo) setCalibracao({ ...CALIBRACAO_PADRAO, ...JSON.parse(salvo) });
+      const auto = localStorage.getItem(CHAVE_AUTO);
+      if (auto !== null) setAutoIdentificar(auto === "1");
     } catch {
       /* calibração padrão */
     }
@@ -85,6 +123,15 @@ export default function CameraPendulo({
     }
   }, []);
 
+  const trocarAuto = useCallback((v: boolean) => {
+    setAutoIdentificar(v);
+    try {
+      localStorage.setItem(CHAVE_AUTO, v ? "1" : "0");
+    } catch {
+      /* sem persistência: vale para esta sessão */
+    }
+  }, []);
+
   const desligar = useCallback(() => {
     if (loopRef.current !== null) cancelAnimationFrame(loopRef.current);
     loopRef.current = null;
@@ -92,9 +139,12 @@ export default function CameraPendulo({
     fluxoRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     trackerRef.current?.limpar();
+    vigiaRef.current?.limpar();
+    ultimaIdentRef.current = 0;
     setLigada(false);
     setMetricas(null);
     setPrevia(null);
+    setCena(null);
   }, []);
 
   useEffect(() => desligar, [desligar]);
@@ -122,11 +172,14 @@ export default function CameraPendulo({
         await videoRef.current.play();
       }
       trackerRef.current = new TrackerPendulo();
+      vigiaRef.current = new VigiaDeCena();
       setLigada(true);
+      setMarcos([]);
 
       const passo = (t: number) => {
         const v = videoRef.current;
         const tr = trackerRef.current;
+        const vg = vigiaRef.current;
         if (v && tr) {
           tr.processarQuadro(v, t);
           const m = tr.metricas();
@@ -134,14 +187,36 @@ export default function CameraPendulo({
           if (m) {
             setPrevia(
               mapearParaZona(
-                lamina,
+                laminaRef.current,
                 m,
                 tr.centroide(),
-                calibracao,
-                temConvencao,
-                sentidoDeLeitura,
+                calibracaoRef.current,
+                convencaoRef.current,
+                sentidoRef.current,
               ),
             );
+          }
+        }
+        if (v && vg) {
+          const estado = vg.processar(v, t);
+          if (estado) {
+            setCena(estado);
+            const descansou = estado.paradaHaMs >= CENA.msParaEstabilizar;
+            const esperou =
+              t - ultimaIdentRef.current >= CENA.msEntreIdentificacoes ||
+              ultimaIdentRef.current === 0;
+            const vale = estado.semReferencia || estado.mudou;
+            if (
+              autoRef.current &&
+              podeIaRef.current &&
+              !identificandoRef.current &&
+              descansou &&
+              esperou &&
+              vale
+            ) {
+              ultimaIdentRef.current = t;
+              identificarRef.current(true);
+            }
           }
         }
         loopRef.current = requestAnimationFrame(passo);
@@ -157,71 +232,95 @@ export default function CameraPendulo({
             : "Não foi possível abrir a câmera.",
       );
     }
-    // lamina/calibracao sao lidos dentro do loop a cada quadro
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lamina, calibracao, temConvencao, sentidoDeLeitura]);
+  }, []);
 
-  async function identificarLamina() {
-    const v = videoRef.current;
-    if (!v || !podeEnviarAIa) return;
-    setIdentificando(true);
-    setAvisoVisao(null);
-    try {
-      const c = document.createElement("canvas");
-      c.width = 960;
-      c.height = Math.round((960 * v.videoHeight) / v.videoWidth) || 540;
-      c.getContext("2d")?.drawImage(v, 0, 0, c.width, c.height);
-      const dataUrl = c.toDataURL("image/jpeg", 0.82);
-      const base64 = dataUrl.split(",")[1] ?? "";
+  const registrarMarco = useCallback((texto: string, automatico: boolean) => {
+    setMarcos((m) => [{ em: Date.now(), texto, automatico }, ...m].slice(0, 8));
+  }, []);
 
-      const r = await fetch("/api/gemini/visao", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imagemBase64: base64,
-          mimeType: "image/jpeg",
-          candidatas: CATALOGO.filter((l) => l.configurada).map((l) => ({
-            id: l.id,
-            nome: l.nome,
-            descricaoVisual: DESCRICAO_VISUAL[l.id] ?? l.nome,
-          })),
-        }),
-      });
-      const corpo = await r.json();
-      if (!r.ok) {
-        setAvisoVisao(corpo?.erro ?? "Falha ao identificar a lâmina.");
-        return;
-      }
-      const resp = corpo.resposta as {
-        laminaId: string | null;
-        confiancaDeclarada: string;
-        justificativa: string;
-        impedimentos: string[];
-      };
-      if (!resp.laminaId) {
+  const identificarLamina = useCallback(
+    async (automatico: boolean) => {
+      const v = videoRef.current;
+      if (!v || !podeIaRef.current || identificandoRef.current) return;
+      identificandoRef.current = true;
+      setIdentificando(true);
+      if (!automatico) setAvisoVisao(null);
+      try {
+        const c = document.createElement("canvas");
+        c.width = 960;
+        c.height = Math.round((960 * v.videoHeight) / v.videoWidth) || 540;
+        c.getContext("2d")?.drawImage(v, 0, 0, c.width, c.height);
+        const dataUrl = c.toDataURL("image/jpeg", 0.82);
+        const base64 = dataUrl.split(",")[1] ?? "";
+
+        const r = await fetch("/api/gemini/visao", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imagemBase64: base64,
+            mimeType: "image/jpeg",
+            candidatas: CATALOGO.filter((l) => l.configurada).map((l) => ({
+              id: l.id,
+              nome: l.nome,
+              descricaoVisual: DESCRICAO_VISUAL[l.id] ?? l.nome,
+            })),
+          }),
+        });
+        const corpo = await r.json();
+        if (!r.ok) {
+          setAvisoVisao(corpo?.erro ?? "Falha ao identificar a lâmina.");
+          return;
+        }
+        const resp = corpo.resposta as {
+          laminaId: string | null;
+          confiancaDeclarada: string;
+          justificativa: string;
+          impedimentos: string[];
+        };
+
+        // A cena vista agora passa a ser a cena de referência, reconhecida ou
+        // não: sem isso o vigia dispararia a mesma foto a cada oito segundos.
+        vigiaRef.current?.marcarIdentificada();
+
+        if (!resp.laminaId) {
+          setAvisoVisao(
+            `Não reconheci a prancha com segurança (${resp.confiancaDeclarada}). ` +
+              (resp.impedimentos.join(" ") || resp.justificativa) +
+              " Escolha a lâmina na lista acima.",
+          );
+          registrarMarco("prancha não reconhecida", automatico);
+          return;
+        }
+        const atual = laminaRef.current;
+        if (resp.laminaId === atual.id) {
+          setAvisoVisao(
+            `Confere: a prancha na mesa é "${atual.nome}" (confiança ${resp.confiancaDeclarada}).`,
+          );
+          if (!automatico) registrarMarco(`confirmou ${atual.nome}`, false);
+          return;
+        }
+        const nova = acharLamina(resp.laminaId);
+        onTrocarLamina?.(resp.laminaId);
         setAvisoVisao(
-          `Não reconheci a prancha com segurança (${resp.confiancaDeclarada}). ` +
-            (resp.impedimentos.join(" ") || resp.justificativa) +
-            " Selecione a lâmina na lista.",
+          `A prancha na mesa mudou: agora é "${nova?.nome ?? resp.laminaId}" ` +
+            `(confiança ${resp.confiancaDeclarada}). ${resp.justificativa} ` +
+            "As leituras já registradas continuam com a lâmina delas.",
         );
-        return;
-      }
-      if (resp.laminaId === lamina.id) {
-        setAvisoVisao(
-          `Confere: a prancha na mesa parece ser "${lamina.nome}" (confiança ${resp.confiancaDeclarada}). Confirme você mesmo antes de pendular.`,
+        registrarMarco(
+          `trocou para ${nova?.nome ?? resp.laminaId}`,
+          automatico,
         );
-        return;
+      } catch {
+        setAvisoVisao("Não foi possível falar com o serviço de identificação.");
+      } finally {
+        identificandoRef.current = false;
+        setIdentificando(false);
       }
-      onTrocarLamina?.(resp.laminaId);
-      setAvisoVisao(
-        `Sugestão: a prancha na mesa parece ser outra (confiança ${resp.confiancaDeclarada}). ${resp.justificativa} Confirme antes de seguir.`,
-      );
-    } catch {
-      setAvisoVisao("Não foi possível falar com o serviço de identificação.");
-    } finally {
-      setIdentificando(false);
-    }
-  }
+    },
+    [onTrocarLamina, registrarMarco],
+  );
+
+  identificarRef.current = identificarLamina;
 
   const abstem = !previa || previa.motivos.length > 0 || !previa.zona;
 
@@ -258,10 +357,22 @@ export default function CameraPendulo({
           />
         </div>
 
+        {/* Etiqueta da lâmina reconhecida, sempre à vista */}
+        {ligada && (
+          <div className="pointer-events-none absolute left-2 top-2 rounded-lg bg-black/65 px-2 py-1 text-xs">
+            <span className="text-[var(--color-acento-forte)]">
+              {lamina.nome}
+            </span>
+            {identificando && (
+              <span className="text-[var(--color-texto-2)]"> · olhando…</span>
+            )}
+          </div>
+        )}
+
         {!ligada && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/55 p-6 text-center text-sm text-[var(--color-texto-2)]">
             {podeUsarCamera
-              ? "A câmera acompanha o movimento do pêndulo sobre a lâmina. Nada é enviado para fora do aparelho."
+              ? "A câmera acompanha o pêndulo sobre a lâmina e reconhece sozinha qual prancha está na mesa."
               : "A autorização de captura por câmera não foi registrada para esta pessoa. Use o registro manual."}
           </div>
         )}
@@ -288,27 +399,70 @@ export default function CameraPendulo({
             <button className="btn flex-1" onClick={desligar}>
               Fechar câmera
             </button>
-            <button
-              className="btn"
-              onClick={() => setCalibrando((v) => !v)}
-            >
+            <button className="btn" onClick={() => setCalibrando((v) => !v)}>
               {calibrando ? "Pronto" : "Calibrar"}
             </button>
             <button
               className="btn"
-              onClick={identificarLamina}
+              onClick={() => identificarLamina(false)}
               disabled={identificando || !podeEnviarAIa}
               title={
                 podeEnviarAIa
-                  ? "Envia uma foto para identificar a prancha"
+                  ? "Envia uma foto para identificar a prancha agora"
                   : "Sem autorização de envio a fornecedor de IA"
               }
             >
-              {identificando ? "Identificando…" : "Identificar lâmina"}
+              {identificando ? "Olhando…" : "Olhar agora"}
             </button>
           </>
         )}
       </div>
+
+      {/* ---- Reconhecimento da lâmina ---- */}
+      {ligada && (
+        <div className="cartao space-y-2">
+          <label className="flex items-center justify-between gap-3">
+            <span>
+              <span className="rotulo block">Reconhecer a prancha sozinho</span>
+              <span className="text-xs text-[var(--color-texto-2)]">
+                {podeEnviarAIa
+                  ? "Uma foto é enviada quando a imagem muda e volta a ficar parada."
+                  : "Precisa da autorização de envio a fornecedor de IA."}
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              className="h-5 w-5 accent-[var(--color-acento)]"
+              checked={autoIdentificar && podeEnviarAIa}
+              disabled={!podeEnviarAIa}
+              onChange={(e) => trocarAuto(e.target.checked)}
+            />
+          </label>
+
+          {autoIdentificar && podeEnviarAIa && cena && (
+            <p className="text-xs text-[var(--color-texto-2)]">
+              {identificando
+                ? "Comparando a prancha da mesa com o catálogo…"
+                : cena.semReferencia
+                  ? "Aguardando a imagem ficar parada para olhar a prancha."
+                  : cena.mudou
+                    ? "A imagem mudou. Segure parado um instante que eu olho de novo."
+                    : `Acompanhando "${lamina.nome}". Mudança desde a última olhada: ${cena.distancia.toFixed(2)}.`}
+            </p>
+          )}
+
+          {marcos.length > 0 && (
+            <ul className="space-y-1 text-xs text-[var(--color-texto-2)]">
+              {marcos.map((m) => (
+                <li key={m.em}>
+                  {new Date(m.em).toLocaleTimeString("pt-BR")} —{" "}
+                  {m.automatico ? "sozinho" : "a pedido"}: {m.texto}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {avisoVisao && (
         <p className="rounded-lg border border-[var(--color-cuidado)]/40 bg-[var(--color-cuidado)]/10 p-3 text-sm">
@@ -389,10 +543,7 @@ export default function CameraPendulo({
             <Linha rotulo="Energia" valor={metricas.energia.toFixed(3)} />
             <Linha rotulo="Nitidez" valor={metricas.nitidez.toFixed(2)} />
             <Linha rotulo="Quadros" valor={String(metricas.quadros)} />
-            <Linha
-              rotulo="Giro"
-              valor={metricas.somaRotacional.toFixed(3)}
-            />
+            <Linha rotulo="Giro" valor={metricas.somaRotacional.toFixed(3)} />
           </div>
           <p className="text-xs text-[var(--color-texto-2)]">
             Estes números descrevem a qualidade da captura, não a confiança na

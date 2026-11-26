@@ -472,7 +472,9 @@ export default function PaginaSessao() {
         />
         <p className="text-xs text-[var(--color-texto-2)]">
           O texto é guardado como está. Se a pergunta mudar durante a
-          pendulação, isso virá um novo evento de leitura.
+          pendulação, isso virá um novo evento de leitura. Escreva sem nomes:
+          a pergunta é a única frase sua que sai do aparelho quando você usa a
+          camada de IA.
         </p>
       </section>
 
@@ -599,6 +601,7 @@ export default function PaginaSessao() {
               é gerado aqui no aparelho. A sessão encerrada continua aberta
               para gerar o PDF outra vez; cada aprovação conta uma versão.
             </p>
+            {redacao && <PainelRedacao redacao={redacao} />}
             <button className="btn btn-principal w-full" onClick={aprovarEBaixar}>
               {sessao.status === "encerrada"
                 ? "Gerar o PDF de novo"
@@ -866,6 +869,81 @@ function Bloco({ titulo, itens }: { titulo: string; itens: string[] }) {
           <li key={i}>• {t}</li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// =========================================================================
+// O texto que vai no PDF, na tela antes da aprovacao. O terapeuta nao deve
+// assinar um documento que ele nao leu (dossie, p. 40: "Toda sintese e
+// rascunho ate a revisao").
+// =========================================================================
+function PainelRedacao({ redacao }: { redacao: Redacao }) {
+  const passos: [string, string[]][] = [
+    ["Agora", redacao.passos.agora],
+    ["Curto prazo", redacao.passos.curto],
+    ["Médio prazo", redacao.passos.medio],
+    ["Longo prazo", redacao.passos.longo],
+  ];
+  return (
+    <div className="space-y-3 rounded-xl border border-[var(--color-acento)]/35 bg-[var(--color-acento)]/5 p-3">
+      <p className="rotulo">Como vai sair no PDF, na sua voz</p>
+      <div className="space-y-3 text-sm leading-relaxed">
+        <Paragrafo texto={redacao.abertura} />
+        <Trecho titulo="O que observamos" texto={redacao.oQueObservamos} />
+        <Trecho titulo="O que você contou" texto={redacao.oQueVoceContou} />
+        <Trecho
+          titulo="Como isso se conversa"
+          texto={redacao.comoIssoSeConversa}
+        />
+        <Trecho
+          titulo="O que ficou em aberto"
+          texto={redacao.oQueFicouEmAberto}
+        />
+        {redacao.perguntasParaVoce.length > 0 && (
+          <div>
+            <p className="rotulo">Perguntas para você pensar</p>
+            <ul className="space-y-1">
+              {redacao.perguntasParaVoce.map((q) => (
+                <li key={q}>— {q}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {passos.map(([titulo, itens]) =>
+          itens.length === 0 ? null : (
+            <div key={titulo}>
+              <p className="rotulo">{titulo}</p>
+              <ul className="space-y-1">
+                {itens.map((i) => (
+                  <li key={i}>— {i}</li>
+                ))}
+              </ul>
+            </div>
+          ),
+        )}
+        <Trecho titulo="Encaminhamento" texto={redacao.encaminhamento} />
+        <Paragrafo texto={redacao.fechamento} />
+      </div>
+      <p className="text-xs text-[var(--color-texto-2)]">
+        Leia antes de aprovar. Se algo não for seu jeito de falar, rode
+        &quot;Jev + Gemini&quot; de novo: cada rodada reescreve o texto.
+      </p>
+    </div>
+  );
+}
+
+function Paragrafo({ texto }: { texto: string }) {
+  if (!texto?.trim()) return null;
+  return <p>{texto}</p>;
+}
+
+function Trecho({ titulo, texto }: { titulo: string; texto: string }) {
+  if (!texto?.trim()) return null;
+  return (
+    <div>
+      <p className="rotulo">{titulo}</p>
+      <p className="text-[var(--color-texto-2)]">{texto}</p>
     </div>
   );
 }
