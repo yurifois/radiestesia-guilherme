@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+/*
+ * Tema escuro e neutro por decisao de uso: o celular fica apontado para a
+ * mesa durante a sessao, e uma tela clara ofusca a lamina e reflete no peso
+ * do pendulo. Botoes grandes porque o terapeuta usa uma mao so.
+ */
+@theme {
+  --color-fundo: #121318;
+  --color-superficie: #1b1d25;
+  --color-superficie-2: #23262f;
+  --color-borda: #31343f;
+  --color-texto: #e8e9ee;
+  --color-texto-2: #a0a3b1;
+  --color-acento: #c2a36a;
+  --color-acento-forte: #d8bd87;
+  --color-alerta: #e4705f;
+  --color-cuidado: #e0b34a;
+  --color-ok: #6fa98a;
+}
+
+html,
+body {
+  background: var(--color-fundo);
+  color: var(--color-texto);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  overscroll-behavior-y: none;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+/* Campos de formulario: alvo de toque confortavel. */
+.campo {
+  width: 100%;
+  min-height: 2.9rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--color-borda);
+  background: var(--color-superficie-2);
+  color: var(--color-texto);
+  padding: 0.6rem 0.75rem;
+}
+.campo:focus-visible {
+  outline: 2px solid var(--color-acento);
+  outline-offset: 1px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0 1.1rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--color-borda);
+  background: var(--color-superficie-2);
+  color: var(--color-texto);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--color-acento);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-principal {
+  background: var(--color-acento);
+  border-color: var(--color-acento);
+  color: #1a1611;
+}
+.btn-principal:hover:not(:disabled) {
+  background: var(--color-acento-forte);
+}
+.btn-pequeno {
+  min-height: 2.3rem;
+  padding: 0 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.cartao {
+  border: 1px solid var(--color-borda);
+  background: var(--color-superficie);
+  border-radius: 0.9rem;
+  padding: 1rem;
+}
+
+.rotulo {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-texto-2);
+  font-weight: 600;
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Radiestesia — registro de sessões",
+  "short_name": "Radiestesia",
+  "description": "Registro de anamnese, leitura de lâminas e síntese simbólica revisada pelo terapeuta.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121318",
+  "theme_color": "#121318",
+  "icons": [
+    {
+      "src": "/icone.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
