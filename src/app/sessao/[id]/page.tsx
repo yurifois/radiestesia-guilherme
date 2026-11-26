@@ -42,16 +42,15 @@ import type {
 } from "@/lib/tipos";
 
 /*
- * Quatro fases, nao sete passos. Os sete titulos antigos misturavam preparo,
- * trabalho e entrega numa rolagem unica: o terapeuta tinha de rolar para
- * reencontrar o controle que acabara de usar. Agora cada fase e uma tela, e a
- * proxima acao fica no rodape, ao alcance do polegar.
+ * Tres fases, uma por tela. O terapeuta prepara a sessao e conduz a leitura;
+ * cruzar a ficha com o pendulo, decidir o que se sustenta e escrever o texto
+ * da entrega e trabalho do aplicativo, e acontece sozinho ao chegar na
+ * entrega. Nada aqui espera aprovacao: o que o app monta ja e o que sai.
  */
 const FASES = [
   { n: 1, nome: "Preparar", resumo: "convencao e lamina" },
   { n: 2, nome: "Ler", resumo: "pergunta, pendulo e registros" },
-  { n: 3, nome: "Cruzar", resumo: "regras, Jev e Gemini" },
-  { n: 4, nome: "Entregar", resumo: "revisao e PDF" },
+  { n: 3, nome: "Entregar", resumo: "o app cruza, escreve e gera o PDF" },
 ] as const;
 
 const MOVIMENTOS: MovimentoPendulo[] = [
@@ -93,7 +92,7 @@ export default function PaginaSessao() {
     }
     setSessao(s);
     // Reabrir a sessao volta ao ponto onde ela parou, nao ao comeco.
-    setFase(s.faseAtual ?? 1);
+    setFase(Math.min(FASES.length, s.faseAtual ?? 1));
     const p = await lerPessoa(s.pessoaId);
     setPessoa(p ?? null);
     setAnamneses(await listarAnamnesesDaPessoa(s.pessoaId));
@@ -132,6 +131,29 @@ export default function PaginaSessao() {
     ro.observe(el);
     return () => ro.disconnect();
   }, [carregando]);
+
+  /*
+   * A sintese guarda em quantas leituras se baseou e qual foi a ultima. Se
+   * uma leitura entrou ou saiu depois do cruzamento, o texto esta velho e o
+   * app refaz — em vez de entregar um PDF que nao corresponde ao registro.
+   */
+  const precisaCruzar =
+    !sintese ||
+    sintese.procedencia.leituras !== eventos.length ||
+    sintese.procedencia.ultimoEventoId !== eventos[eventos.length - 1]?.id;
+
+  const cruzando = useRef(false);
+  useEffect(() => {
+    if (fase !== 3 || carregando || !sessao || !pessoa) return;
+    if (!precisaCruzar || cruzando.current) return;
+    cruzando.current = true;
+    cruzarSozinho().finally(() => {
+      cruzando.current = false;
+    });
+    // cruzarSozinho fecha sobre o estado desta renderizacao; as dependencias
+    // abaixo sao exatamente o que decide se ele deve rodar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fase, carregando, sessao, pessoa, precisaCruzar]);
 
   const jaMontou = useRef(false);
   useEffect(() => {
@@ -219,9 +241,9 @@ export default function PaginaSessao() {
     setPergunta("");
   }
 
-  async function gerarSintese() {
-    if (!sessao || !pessoa) return;
-    setTrabalhando("Cruzando ficha e leituras pelas regras…");
+  async function gerarSintese(): Promise<Sintese | null> {
+    if (!sessao || !pessoa) return null;
+    setTrabalhando("Cruzando a ficha com as leituras…");
     setAvisoIa(null);
     setRedacao(null);
     const base = sintetizar({
@@ -237,11 +259,16 @@ export default function PaginaSessao() {
     setSessao(s);
     await salvarSessao(s);
     setTrabalhando(null);
+    return base;
   }
 
-  async function orquestrarComIa() {
-    if (!sessao || !pessoa || !sintese) return;
-    setTrabalhando("O Jev está decidindo…");
+  /*
+   * Recebe a sintese pelo argumento, e nao pelo estado: quando o cruzamento
+   * roda sozinho, o estado ainda nao se atualizou no mesmo ciclo.
+   */
+  async function orquestrarComIa(sintese: Sintese) {
+    if (!sessao || !pessoa) return;
+    setTrabalhando("O Jev está decidindo o que se sustenta…");
     setAvisoIa(null);
     try {
       const trechos = extrairTrechos(anamneses);
@@ -301,16 +328,33 @@ export default function PaginaSessao() {
         body: JSON.stringify(payload),
       });
       const corpoJev = await rJev.json();
+      /*
+       * O Jev falha de vez em quando: fora do ar, ou devolvendo uma estrutura
+       * fora do contrato. Antes isso parava tudo e a entrega ficava so com o
+       * texto das regras, seco. Como nao existe mais aprovacao no caminho,
+       * ninguem perceberia a tempo. Entao o Gemini escreve assim mesmo, a
+       * partir da sintese deterministica, que ja esta pronta e verificada.
+       */
+      const decisao: DecisaoJev = rJev.ok
+        ? (corpoJev.decisao as DecisaoJev)
+        : {
+            status: sintese.status,
+            interpretacaoSimbolica: sintese.interpretacaoSimbolica,
+            vinculosDeApoio: sintese.vinculosDeApoio,
+            contradicoesELacunas: sintese.contradicoesELacunas,
+            perguntasDeConfirmacao: sintese.perguntasDeConfirmacao,
+            acoesSugeridas: sintese.acoesAcordadas,
+            proximaLaminaId: null,
+            proximaLaminaMotivo: "",
+            limites: sintese.limites,
+          };
       if (!rJev.ok) {
         setAvisoIa(
-          `${corpoJev?.erro ?? "Falha na orquestração."} A síntese pelas regras continua válida.`,
+          `${corpoJev?.erro ?? "Falha na orquestração."} O texto foi escrito a partir das regras do aplicativo. Toque em "Montar de novo" se quiser tentar outra vez.`,
         );
-        setTrabalhando(null);
-        return;
       }
-      const decisao = corpoJev.decisao as DecisaoJev;
 
-      setTrabalhando("O Gemini está escrevendo o texto da entrega…");
+      setTrabalhando("Escrevendo o texto da entrega na sua voz…");
       const rGem = await fetch("/api/gemini/redacao", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -332,7 +376,7 @@ export default function PaginaSessao() {
       const corpoGem = await rGem.json();
       if (!rGem.ok) {
         setAvisoIa(
-          `O Jev decidiu, mas a redação falhou: ${corpoGem?.erro ?? "erro"}. O PDF sai com o texto das regras.`,
+          `O texto na sua voz não pôde ser escrito: ${corpoGem?.erro ?? "erro"}. O PDF sai com o texto das regras, que diz a mesma coisa de forma mais seca.`,
         );
       }
       const redigida: Redacao | null = rGem.ok
@@ -369,8 +413,9 @@ export default function PaginaSessao() {
         limites: [...new Set([...sintese.limites, ...decisao.limites])],
         procedencia: {
           ...sintese.procedencia,
-          motor: "deterministico+ia",
-          jevModelo: corpoJev.modelo,
+          motor:
+            rJev.ok || rGem.ok ? "deterministico+ia" : "deterministico",
+          jevModelo: rJev.ok ? corpoJev.modelo : undefined,
           geminiModelo: rGem.ok ? corpoGem.modelo : undefined,
           geradoEm: new Date().toISOString(),
         },
@@ -392,34 +437,25 @@ export default function PaginaSessao() {
     }
   }
 
-  async function aprovarEBaixar() {
+  /*
+   * Baixar o PDF nao e aprovar nada: o texto ja esta pronto quando a fase
+   * abre. Encerrar a sessao e so marcar que a entrega saiu; reabrir volta a
+   * aceitar leitura nova, e o PDF pode sair de novo quantas vezes precisar.
+   */
+  async function gerarPdf() {
     if (!sessao || !pessoa || !sintese) return;
-    const encerrada = sessao.encerradaEm ?? agora();
     const sFinal: Sessao = {
       ...sessao,
       status: "encerrada",
-      encerradaEm: encerrada,
-    };
-    const versaoAnterior = sintese.revisao?.versao ?? 0;
-    const revisada: Sintese = {
-      ...sintese,
-      revisao: {
-        autor: sessao.terapeuta,
-        decisao: "aprovada",
-        alteracoes: versaoAnterior === 0 ? "primeira aprovação" : "nova versão aprovada",
-        em: agora(),
-        versao: versaoAnterior + 1,
-      },
+      encerradaEm: sessao.encerradaEm ?? agora(),
     };
     setSessao(sFinal);
-    setSintese(revisada);
     await salvarSessao(sFinal);
-    await salvarSintese(revisada);
 
     const nome = baixarPdf({
       pessoa,
       sessao: sFinal,
-      sintese: revisada,
+      sintese,
       redacao: redacao ?? undefined,
       laminasUsadas: [
         ...new Set(
@@ -431,9 +467,17 @@ export default function PaginaSessao() {
   }
 
   /**
+   * O app monta a leitura inteira: regras primeiro, depois Jev e Gemini se a
+   * pessoa autorizou o envio. O terapeuta nao aperta nada para isso.
+   */
+  async function cruzarSozinho() {
+    const base = await gerarSintese();
+    if (base && podeIa) await orquestrarComIa(base);
+  }
+
+  /**
    * Sessao encerrada volta a aceitar registro. O horario de encerramento sai
-   * junto: a proxima aprovacao marca o seu, e cada aprovacao ja conta uma
-   * versao propria na revisao.
+   * junto: o proximo PDF marca o seu. Nada do que ja foi gravado se perde.
    */
   async function reabrirSessao() {
     if (!sessao) return;
@@ -486,25 +530,14 @@ export default function PaginaSessao() {
       recado =
         "Sem convencao registrada as leituras so entram como inconclusivas.";
   } else if (fase === 2) {
-    rotuloAcao = "Cruzar os dados";
+    rotuloAcao = "Fechar a leitura e montar a entrega";
     if (eventos.length === 0)
       recado =
-        "Nenhuma leitura registrada ainda. Da para cruzar so a ficha, mas o texto sai magro.";
-  } else if (fase === 3) {
-    if (!sintese) {
-      rotuloAcao = "Cruzar pelas regras";
-      acaoPrincipal = gerarSintese;
-    } else {
-      rotuloAcao = "Ir para a entrega";
-    }
+        "Nenhuma leitura registrada ainda. O app cruza so a ficha, mas o texto sai magro.";
   } else {
-    rotuloAcao =
-      sessao.status === "encerrada"
-        ? "Gerar o PDF de novo"
-        : "Aprovar e gerar o PDF";
-    acaoPrincipal = aprovarEBaixar;
-    if (!sintese)
-      impedimento = "Cruze os dados na fase 3 antes de gerar o PDF.";
+    rotuloAcao = nomePdf ? "Baixar o PDF de novo" : "Baixar o PDF";
+    acaoPrincipal = gerarPdf;
+    if (!sintese) impedimento = "O app ainda está montando a entrega.";
   }
 
   return (
@@ -786,83 +819,55 @@ export default function PaginaSessao() {
         </div>
       )}
 
-      {/* ================= Fase 3 — Cruzar ================= */}
+      {/* ================= Fase 3 — Entregar ================= */}
       {fase === 3 && (
-        <div className="space-y-5">
-          <section className="space-y-3">
-            <h2 className="rotulo">Cruzamento</h2>
-            <p className="text-sm leading-relaxed text-[var(--color-texto-2)]">
-              Primeiro as regras do aplicativo, sem IA: elas cruzam a ficha com
-              as {eventos.length} leitura(s) e decidem os encaminhamentos.
-              Depois, se autorizado, o Jev decide o que se sustenta e o Gemini
-              escreve na sua voz.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                className="btn flex-1"
-                onClick={gerarSintese}
-                disabled={Boolean(trabalhando)}
-              >
-                {sintese ? "Cruzar de novo" : "Cruzar pelas regras"}
-              </button>
-              <button
-                className="btn flex-1"
-                onClick={orquestrarComIa}
-                disabled={!sintese || !podeIa || Boolean(trabalhando)}
-                title={
-                  podeIa
-                    ? "Jev decide, Gemini escreve"
-                    : "Sem autorização de envio a fornecedor de IA"
-                }
-              >
-                Jev + Gemini
-              </button>
-            </div>
-            {trabalhando && <p className="aviso aviso-ok">{trabalhando}</p>}
-            {!podeIa && (
-              <p className="text-xs leading-relaxed text-[var(--color-texto-2)]">
-                A camada de IA está indisponível porque a autorização de envio
-                a fornecedor de IA não foi registrada. A síntese pelas regras
-                funciona sem ela.
-              </p>
-            )}
-            {!sintese && !trabalhando && (
-              <p className="text-sm text-[var(--color-texto-2)]">
-                Nada cruzado ainda nesta sessão.
-              </p>
-            )}
-          </section>
-
-          {sintese && <PainelSintese sintese={sintese} redacao={redacao} />}
-        </div>
-      )}
-
-      {/* ================= Fase 4 — Entregar ================= */}
-      {fase === 4 && (
         <div className="space-y-4">
           <section className="space-y-3">
-            <h2 className="rotulo">Entrega</h2>
+            <h2 className="rotulo">A entrega</h2>
             <p className="text-sm leading-relaxed text-[var(--color-texto-2)]">
-              Toda síntese é rascunho até a sua revisão. Ao aprovar, a sessão é
-              encerrada, a revisão fica registrada com autor e horário, e o PDF
-              é gerado aqui no aparelho. A sessão encerrada continua aberta
-              para gerar o PDF outra vez; cada aprovação conta uma versão.
+              O cruzamento da ficha com as {eventos.length} leitura(s), os
+              encaminhamentos e o texto na sua voz são montados pelo próprio
+              aplicativo, aqui, sem você precisar pedir. Se uma leitura mudar,
+              ele refaz sozinho. O que está escrito abaixo é exatamente o que
+              sai no PDF.
             </p>
+            {trabalhando ? (
+              <p className="aviso aviso-ok">{trabalhando}</p>
+            ) : (
+              <button
+                className="btn btn-pequeno"
+                onClick={() => cruzarSozinho()}
+              >
+                Montar de novo
+              </button>
+            )}
+            {!podeIa && (
+              <p className="text-xs leading-relaxed text-[var(--color-texto-2)]">
+                A autorização de envio a fornecedor de IA não foi registrada
+                para esta pessoa, então o texto sai pelas regras do aplicativo:
+                correto, mas seco.
+              </p>
+            )}
           </section>
 
-          {!sintese ? (
-            <p className="aviso aviso-cuidado">
-              Não há síntese nesta sessão. Volte à fase Cruzar antes de gerar o
-              PDF.
-            </p>
-          ) : redacao ? (
+          {redacao ? (
             <PainelRedacao redacao={redacao} />
-          ) : (
+          ) : !trabalhando && sintese ? (
             <p className="aviso aviso-cuidado">
-              Sem a camada de redação, o PDF sai com o texto das regras —
-              correto, mas seco. Rode &quot;Jev + Gemini&quot; na fase Cruzar
-              para o texto na sua voz.
+              O texto na sua voz não foi escrito nesta rodada. O PDF sai com o
+              texto das regras, que diz a mesma coisa de forma mais seca.
             </p>
+          ) : null}
+
+          {sintese && (
+            <details className="cartao">
+              <summary className="cursor-pointer py-1.5 text-sm font-medium">
+                Como o app chegou aqui
+              </summary>
+              <div className="mt-3">
+                <PainelSintese sintese={sintese} redacao={null} />
+              </div>
+            </details>
           )}
 
           {nomePdf && (
@@ -1157,9 +1162,9 @@ function Bloco({ titulo, itens }: { titulo: string; itens: string[] }) {
 }
 
 // =========================================================================
-// O texto que vai no PDF, na tela antes da aprovacao. O terapeuta nao deve
-// assinar um documento que ele nao leu (dossie, p. 40: "Toda sintese e
-// rascunho ate a revisao").
+// O mesmo texto que vai no PDF, na tela. Nao e uma etapa de aprovacao: o
+// terapeuta entrega este documento em maos, entao ele ve na tela o que a
+// pessoa vai ler no papel.
 // =========================================================================
 function PainelRedacao({ redacao }: { redacao: Redacao }) {
   const passos: [string, string[]][] = [
@@ -1209,8 +1214,8 @@ function PainelRedacao({ redacao }: { redacao: Redacao }) {
         <Paragrafo texto={redacao.fechamento} />
       </div>
       <p className="text-xs text-[var(--color-texto-2)]">
-        Leia antes de aprovar. Se algo não for seu jeito de falar, rode
-        &quot;Jev + Gemini&quot; de novo: cada rodada reescreve o texto.
+        Se algo não for seu jeito de falar, toque em &quot;Montar de
+        novo&quot;: cada rodada reescreve o texto do zero.
       </p>
     </div>
   );

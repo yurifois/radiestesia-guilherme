@@ -482,8 +482,19 @@ export interface Sintese {
     geminiModelo?: string;
     regrasVersao: string;
     geradoEm: string;
+    /**
+     * Quantas leituras entraram nesta sintese, e qual foi a ultima. E assim
+     * que o app sabe que a leitura mudou depois do cruzamento e que o texto
+     * precisa ser refeito sozinho.
+     */
+    leituras?: number;
+    ultimoEventoId?: string;
   };
-  /** Revisao humana. Toda sintese e rascunho ate aqui. */
+  /**
+   * Campo antigo, de quando a sintese esperava aprovacao do terapeuta. Nao e
+   * mais escrito: o app monta a leitura e o texto sozinho. Fica aqui so para
+   * as sinteses ja gravadas em aparelhos que usaram a versao anterior.
+   */
   revisao?: {
     autor: string;
     decisao: "aprovada" | "corrigida" | "descartada";

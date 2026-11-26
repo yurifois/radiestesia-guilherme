@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Radiestesia — registro de sessões",
   description:
-    "Registro de anamnese, leitura de lâminas e síntese simbólica revisada pelo terapeuta.",
+    "Registro de anamnese, leitura de lâminas e síntese simbólica montada pelo aplicativo.",
   manifest: "/manifest.webmanifest",
 };
 
@@ -44,8 +44,8 @@ export default function RootLayout({
         </header>
         <main className="mx-auto max-w-2xl px-4 pb-10 pt-5">{children}</main>
         <footer className="mx-auto max-w-2xl px-4 pb-10 text-xs leading-relaxed text-[var(--color-texto-2)]">
-          As interpretações aqui são simbólicas e passam por revisão do
-          terapeuta. Não são diagnóstico, prescrição ou previsão. O cadastro
+          As interpretações aqui são simbólicas e saem do que foi registrado
+          na sessão. Não são diagnóstico, prescrição ou previsão. O cadastro
           fica guardado somente neste aparelho; quando você usa a camada de IA,
           só a pergunta da leitura e trechos da ficha saem daqui, sem nome nem
           contato.

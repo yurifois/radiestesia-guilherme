@@ -206,7 +206,7 @@ class Folha {
     this.doc.setFontSize(7.6);
     this.doc.setTextColor(130, 130, 140);
     const aviso =
-      "Registro de leitura simbólica revisado pelo terapeuta. Não é diagnóstico, prescrição, exame nem previsão.";
+      "Registro de leitura simbólica. Não é diagnóstico, prescrição, exame nem previsão.";
     this.doc.text(aviso, MARGEM, ALTURA_PAGINA - 11);
     this.doc.text(
       String(this.pagina),
@@ -367,10 +367,8 @@ export function gerarPdf(dados: DadosPdf): { blob: Blob; nome: string } {
     ["Redação", proc.geminiModelo ?? "—"],
     ["Gerado em", dataHoraLonga(proc.geradoEm)],
     [
-      "Revisão",
-      sintese.revisao
-        ? `${sintese.revisao.decisao} por ${sintese.revisao.autor} em ${dataHoraLonga(sintese.revisao.em)} (versão ${sintese.revisao.versao})`
-        : "rascunho sem revisão registrada",
+      "Leituras consideradas",
+      String(sintese.procedencia.leituras ?? "—"),
     ],
     ["Status", sintese.status.replace(/_/g, " ")],
   ]);

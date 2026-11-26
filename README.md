@@ -4,9 +4,10 @@ Aplicativo web (mobile-first) para o Guilherme conduzir sessões de radiestesia:
 ficha de anamnese, catálogo de lâminas, acompanhamento do pêndulo pela câmera,
 cruzamento com o que a pessoa contou e entrega em PDF, na voz dele.
 
-Nada é diagnóstico. Toda saída é **síntese simbólica para revisão** — o texto
-só vira PDF depois que o terapeuta aprova, e a aprovação fica registrada com
-autor, horário e número de versão.
+Nada é diagnóstico. Toda saída é **síntese simbólica**: o aplicativo cruza a
+ficha com as leituras, decide o que se sustenta, escreve o texto e gera o PDF
+sozinho. O terapeuta conduz a sessão; montar a leitura é trabalho do app, e
+não há etapa de aprovação no caminho.
 
 ---
 
@@ -23,12 +24,13 @@ autor, horário e número de versão.
    geometria declarada, mais 4 gráficos radiônicos que são de trabalho e nunca
    são lidos. O desenho e o mapa de leitura saem da mesma fonte, então não há
    como divergirem.
-5. **A sessão em quatro fases** — *Preparar* (convenção e lâmina), *Ler*
-   (pergunta, pêndulo e registros), *Cruzar* (regras, depois Jev e Gemini) e
-   *Entregar* (revisão do texto e PDF). Uma fase por tela, com rodapé fixo
-   trazendo a próxima ação ao alcance do polegar; a fase fica gravada e
-   reabrir a sessão volta nela. Uma sessão encerrada pode ser reaberta sem
-   perder nada.
+5. **A sessão em três fases** — *Preparar* (convenção e lâmina), *Ler*
+   (pergunta, pêndulo e registros) e *Entregar*. Ao chegar na entrega, o app
+   cruza pelas regras, chama Jev e Gemini e escreve o texto **sozinho**, sem
+   ninguém apertar nada; se uma leitura entrar ou sair depois disso, ele
+   refaz. Uma fase por tela, com rodapé fixo trazendo a próxima ação ao
+   alcance do polegar; a fase fica gravada e reabrir a sessão volta nela. Uma
+   sessão encerrada pode ser reaberta sem perder nada.
 6. **Pendulação** — a câmera abre **em tela cheia** e acompanha o pêndulo,
    medindo eixo de oscilação, sentido de giro e estabilidade. Tudo o que a
    sessão precisa está ali dentro: a pergunta da leitura, o desenho da lâmina
@@ -47,7 +49,9 @@ autor, horário e número de versão.
    sessão de câmera, e pode ser desligada num botão. Leituras já registradas
    guardam a lâmina com que foram feitas.
 8. **Síntese** — primeiro pelas regras (determinística, sem IA), depois, se
-   autorizado, a camada Jev + Gemini.
+   autorizado, a camada Jev + Gemini. Se o Jev falhar ou devolver estrutura
+   fora do contrato, o Gemini escreve a partir da síntese determinística: a
+   entrega não fica muda por causa de um modelo.
 9. **Entrega** — PDF gerado no próprio aparelho, nomeado
    `Nome-Da-Pessoa_AAAA-MM-DD_HHhMM.pdf`.
 

@@ -174,7 +174,7 @@ export const FICHA_BASE: Formulario = {
             { valor: "sim", rotulo: "Sim, compreendi" },
             { valor: "quero_mais_explicacao", rotulo: "Quero mais explicação" },
           ],
-          ajuda: "Interpretações são simbólicas e revisadas pelo terapeuta. Não são diagnóstico, prescrição ou previsão.",
+          ajuda: "Interpretações são simbólicas e saem do que for registrado aqui. Não são diagnóstico, prescrição ou previsão.",
         },
         {
           id: "B20",

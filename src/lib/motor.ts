@@ -30,7 +30,7 @@ import type {
   VinculoApoio,
 } from "./tipos";
 
-export const VERSAO_REGRAS = "regras-1.0.0";
+export const VERSAO_REGRAS = "regras-1.1.0";
 
 // ===========================================================================
 // Camada 1: integridade
@@ -520,6 +520,8 @@ export function sintetizar(entrada: EntradaSintese): Sintese {
       motor: "deterministico",
       regrasVersao: VERSAO_REGRAS,
       geradoEm: new Date().toISOString(),
+      leituras: eventos.length,
+      ultimoEventoId: eventos[eventos.length - 1]?.id,
     },
   };
 }
@@ -591,7 +593,7 @@ function montarLimites(
   pessoa: Pessoa,
 ): string[] {
   const limites = new Set<string>([
-    "Esta é uma leitura simbólica revisada por pessoa, não diagnóstico, prescrição ou previsão.",
+    "Esta é uma leitura simbólica, não diagnóstico, prescrição, exame ou previsão.",
     "O movimento do pêndulo foi registrado como movimento observado. Isso não mede energia nem comprova o significado atribuído.",
   ]);
 

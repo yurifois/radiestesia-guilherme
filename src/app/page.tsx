@@ -178,8 +178,8 @@ export default function Inicio() {
           <p>
             Este sistema registra informações fornecidas pela pessoa atendida e
             observações de uma sessão de radiestesia. As interpretações são
-            simbólicas e passam por revisão do terapeuta. Não são diagnóstico,
-            prescrição ou previsão.
+            simbólicas e saem do que foi registrado na sessão. Não são
+            diagnóstico, prescrição ou previsão.
           </p>
           <p className="text-[var(--color-texto-2)]">
             Guardar aqui não é o mesmo que nunca sair: a camada de IA é
