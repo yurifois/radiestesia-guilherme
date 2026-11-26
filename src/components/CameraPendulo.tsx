@@ -93,6 +93,8 @@ export default function CameraPendulo({
   const autoRef = useRef(autoIdentificar);
   const identificandoRef = useRef(false);
   const ultimaIdentRef = useRef(0);
+  const abriuEmRef = useRef(0);
+  const mudouDesdeRef = useRef<number | null>(null);
   const identificarRef = useRef<(auto: boolean) => void>(() => {});
 
   laminaRef.current = lamina;
@@ -141,6 +143,7 @@ export default function CameraPendulo({
     trackerRef.current?.limpar();
     vigiaRef.current?.limpar();
     ultimaIdentRef.current = 0;
+    mudouDesdeRef.current = null;
     setLigada(false);
     setMetricas(null);
     setPrevia(null);
@@ -173,6 +176,8 @@ export default function CameraPendulo({
       }
       trackerRef.current = new TrackerPendulo();
       vigiaRef.current = new VigiaDeCena();
+      abriuEmRef.current = performance.now();
+      mudouDesdeRef.current = null;
       setLigada(true);
       setMarcos([]);
 
@@ -201,7 +206,19 @@ export default function CameraPendulo({
           const estado = vg.processar(v, t);
           if (estado) {
             setCena(estado);
+            if (estado.mudou) {
+              if (mudouDesdeRef.current === null) mudouDesdeRef.current = t;
+            } else {
+              mudouDesdeRef.current = null;
+            }
+            // Na mao, a imagem pode nunca ficar de todo parada. Entao: ou a
+            // cena descansou, ou ja faz tempo demais esperando por isso.
             const descansou = estado.paradaHaMs >= CENA.msParaEstabilizar;
+            const cansouDeEsperar =
+              (estado.semReferencia &&
+                t - abriuEmRef.current >= CENA.msSemEsperarParada) ||
+              (mudouDesdeRef.current !== null &&
+                t - mudouDesdeRef.current >= CENA.msSemEsperarParada);
             const esperou =
               t - ultimaIdentRef.current >= CENA.msEntreIdentificacoes ||
               ultimaIdentRef.current === 0;
@@ -210,10 +227,11 @@ export default function CameraPendulo({
               autoRef.current &&
               podeIaRef.current &&
               !identificandoRef.current &&
-              descansou &&
+              (descansou || cansouDeEsperar) &&
               esperou &&
               vale
             ) {
+              mudouDesdeRef.current = null;
               ultimaIdentRef.current = t;
               identificarRef.current(true);
             }

@@ -754,6 +754,11 @@ export const CENA = {
   msParaEstabilizar: 1200,
   /** Tempo minimo entre duas identificacoes. */
   msEntreIdentificacoes: 8000,
+  /**
+   * Na mao, a imagem pode nunca ficar de todo parada. Passado este tempo
+   * esperando a cena descansar, vale olhar assim mesmo.
+   */
+  msSemEsperarParada: 6000,
 };
 
 export interface EstadoCena {
