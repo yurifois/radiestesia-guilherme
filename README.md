@@ -23,9 +23,14 @@ autor, horário e número de versão.
    geometria declarada, mais 4 gráficos radiônicos que são de trabalho e nunca
    são lidos. O desenho e o mapa de leitura saem da mesma fonte, então não há
    como divergirem.
-5. **Pendulação** — a câmera traseira acompanha o pêndulo e mede eixo de
-   oscilação, sentido de giro e estabilidade. O registro manual pelo toque na
-   lâmina é o caminho principal; a câmera é apoio.
+5. **Pendulação** — a câmera abre **em tela cheia** e acompanha o pêndulo,
+   medindo eixo de oscilação, sentido de giro e estabilidade. Tudo o que a
+   sessão precisa está ali dentro: a pergunta da leitura, o desenho da lâmina
+   sobre a imagem (toque para registrar a zona), calibração, dados da captura
+   e o reconhecimento da prancha. Quem abre e quem fecha é o terapeuta —
+   botão de fechar sempre visível e tecla Esc. Enquanto está aberta, o
+   aparelho fica acordado. O registro manual pelo toque é o caminho
+   principal; a câmera é apoio.
 6. **Reconhecimento da prancha** — a câmera reconhece sozinha qual lâmina está
    na mesa e troca a lâmina ativa quando o papel muda, no meio da sessão.
    Como funciona: uma miniatura 32×24 normalizada da cena entra numa média

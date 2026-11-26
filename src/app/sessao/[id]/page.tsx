@@ -496,6 +496,9 @@ export default function PaginaSessao() {
           podeEnviarAIa={podeIa}
           onRegistrar={registrarLeitura}
           onTrocarLamina={setLaminaId}
+          pergunta={pergunta}
+          onPergunta={setPergunta}
+          totalLeituras={eventos.length}
         />
       </section>
 
